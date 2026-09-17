@@ -1,0 +1,8 @@
+{
+  "name": "La fe católica-juvenil",
+  "description": "Aplicación motivacional e inspiradora para jóvenes católicos o en busca de una orientación, a través de la religión católica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
