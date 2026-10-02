@@ -65,6 +65,7 @@ import com.example.data.model.HolySpiritGift
 import com.example.data.model.SacramentKeyPoint
 import com.example.data.model.SacramentType
 import com.example.data.repository.ContentRepository
+import com.example.ui.components.CatholicEssentialsSection
 import com.example.ui.viewmodel.MainViewModel
 import com.example.ui.viewmodel.Screen
 
@@ -75,14 +76,19 @@ fun SacramentsScreen(
 ) {
     val selectedSacrament by viewModel.selectedSacrament.collectAsState()
     val sacraments = ContentRepository.getSacramentsList()
-    val selectedIndex = sacraments.indexOf(selectedSacrament)
+    var showOnlyEssentialsGuide by remember { mutableStateOf(false) }
+    val selectedIndex = if (showOnlyEssentialsGuide) {
+        sacraments.size
+    } else {
+        sacraments.indexOf(selectedSacrament).coerceAtLeast(0)
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .testTag("sacraments_screen")
     ) {
-        // Tab Navigation for the 3 Sacraments
+        // Tab Navigation for the 3 Sacraments + Guía Esencial para Jóvenes y Católicos
         ScrollableTabRow(
             selectedTabIndex = selectedIndex,
             edgePadding = 16.dp,
@@ -101,18 +107,33 @@ fun SacramentsScreen(
         ) {
             sacraments.forEachIndexed { index, sacrament ->
                 Tab(
-                    selected = selectedIndex == index,
-                    onClick = { viewModel.selectSacrament(sacrament) },
+                    selected = !showOnlyEssentialsGuide && selectedIndex == index,
+                    onClick = {
+                        showOnlyEssentialsGuide = false
+                        viewModel.selectSacrament(sacrament)
+                    },
                     text = {
                         Text(
                             text = sacrament.title,
                             fontSize = 15.sp,
-                            fontWeight = if (selectedIndex == index) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (!showOnlyEssentialsGuide && selectedIndex == index) FontWeight.Bold else FontWeight.Normal
                         )
                     },
                     modifier = Modifier.testTag("tab_sacrament_${sacrament.name.lowercase()}")
                 )
             }
+            Tab(
+                selected = showOnlyEssentialsGuide,
+                onClick = { showOnlyEssentialsGuide = true },
+                text = {
+                    Text(
+                        text = "✨ Saber Católico y Joven",
+                        fontSize = 15.sp,
+                        fontWeight = if (showOnlyEssentialsGuide) FontWeight.ExtraBold else FontWeight.SemiBold
+                    )
+                },
+                modifier = Modifier.testTag("tab_sacrament_essential_guide")
+            )
         }
 
         // Details content
@@ -123,6 +144,7 @@ fun SacramentsScreen(
             contentPadding = PaddingValues(top = 16.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (!showOnlyEssentialsGuide) {
             // Header: Subtitle & Slogan
             item {
                 Column(
@@ -516,6 +538,23 @@ fun SacramentsScreen(
                         )
                     }
                 }
+            }
+            }
+
+            // Sección completa: Lo que todo Joven y Católico en general debe saber
+            item {
+                CatholicEssentialsSection(
+                    onSaveTopicToJournal = { essentialItem ->
+                        val bulletsText = essentialItem.bulletPoints.joinToString("\n• ", prefix = "• ")
+                        viewModel.addJournalEntry(
+                            title = "Saber Católico: ${essentialItem.title}",
+                            content = "${essentialItem.summaryForYouth}\n\n$bulletsText\n\nConsejo práctico:\n${essentialItem.practicalTip}\n\n(${essentialItem.biblicalOrCatechismRef})",
+                            category = JournalCategory.SACRAMENTS.name,
+                            sacramentRelated = selectedSacrament.name
+                        )
+                        viewModel.navigateTo(Screen.Journal)
+                    }
+                )
             }
         }
     }

@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -65,8 +66,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.data.model.FaithRankTier
 import com.example.data.model.SacramentType
 import com.example.data.repository.ContentRepository
+import com.example.ui.components.SendMessageToCreatorSection
 import com.example.ui.viewmodel.MainViewModel
 import com.example.ui.viewmodel.Screen
 
@@ -81,6 +84,13 @@ fun HomeScreen(
     val dailySpark = ContentRepository.dailySparks[dailySparkIndex]
     val dailyQuote by viewModel.dailyQuote.collectAsState()
     val dailyQuoteSaved by viewModel.dailyQuoteSaved.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
+    val completedChallengesCount by viewModel.completedChallengesCount.collectAsState()
+    val dailyQuestionsCompletedToday by viewModel.dailyQuestionsCompletedToday.collectAsState()
+    val currentFaithRank by viewModel.currentFaithRank.collectAsState()
+    val challengeStreak by viewModel.challengeStreak.collectAsState()
+    val challengeXp by viewModel.challengeXp.collectAsState()
+    val creatorMessages by viewModel.creatorMessages.collectAsState()
 
     LazyColumn(
         modifier = modifier
@@ -93,7 +103,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp)
+                    .height(235.dp)
                     .testTag("hero_banner_container")
             ) {
                 Image(
@@ -110,7 +120,7 @@ fun HomeScreen(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Black.copy(alpha = 0.25f),
-                                    Color.Black.copy(alpha = 0.75f)
+                                    Color.Black.copy(alpha = 0.78f)
                                 )
                             )
                         )
@@ -121,33 +131,194 @@ fun HomeScreen(
                         .align(Alignment.BottomStart)
                         .padding(20.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        Text(
-                            text = "FE CATÓLICA PARA HOY",
-                            color = MaterialTheme.colorScheme.onSecondary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.92f)
+                        ) {
+                            Text(
+                                text = "FE CATÓLICA PARA HOY",
+                                color = MaterialTheme.colorScheme.onSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
 
                     Text(
-                        text = "Bienvenido a Kairós",
+                        text = userProfile?.personalizedGreeting ?: "Bienvenido a Kairós",
                         color = Color.White,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.testTag("hero_greeting_title")
                     )
 
                     Text(
-                        text = "Tu fe no es una teoría: es tu mayor aventura.",
-                        color = Color.White.copy(alpha = 0.9f),
+                        text = if (userProfile != null) {
+                            "${userProfile!!.fullName} • Tu fe no es una teoría: es tu mayor aventura."
+                        } else {
+                            "Tu fe no es una teoría: es tu mayor aventura."
+                        },
+                        color = Color.White.copy(alpha = 0.92f),
                         fontSize = 14.sp
                     )
+                }
+            }
+        }
+
+        // Retos estilo Duolingo + Sistema de 12 Rangos y Emblemas estilo Free Fire (Cada 5 retos sube de rango)
+        item {
+            val nextRank = FaithRankTier.nextRank(currentFaithRank)
+            val tierAccent = Color(currentFaithRank.primaryColorHex)
+            val unlockedEmblemsCount = com.example.data.repository.ChallengeRepository.getUnlockedEmblems(completedChallengesCount).size
+            val totalEmblemsCount = com.example.data.repository.ChallengeRepository.specialEmblems.size
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable { viewModel.navigateTo(Screen.Challenges) }
+                    .testTag("home_challenges_rank_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF0F172A)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = tierAccent.copy(alpha = 0.22f),
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = currentFaithRank.badgeIconText,
+                                        fontSize = 24.sp
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "5 PREGUNTAS POR DÍA • 12 RANGOS Y EMBLEMAS",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = tierAccent,
+                                    letterSpacing = 0.8.sp
+                                )
+                                Text(
+                                    text = "Rango: ${currentFaithRank.rankName} • ${currentFaithRank.emblemName}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "📅 Hoy: $dailyQuestionsCompletedToday/${FaithRankTier.MAX_DAILY_QUESTIONS} • 🏅 Emblemas: $unlockedEmblemsCount/$totalEmblemsCount • 🔥 Racha: $challengeStreak",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFCBD5E1)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = { viewModel.navigateTo(Screen.Challenges) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tierAccent,
+                                contentColor = Color(0xFF0F172A)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.testTag("btn_home_open_challenges")
+                        ) {
+                            Text(
+                                text = if (dailyQuestionsCompletedToday >= FaithRankTier.MAX_DAILY_QUESTIONS) {
+                                    "5/5 Hoy"
+                                } else {
+                                    "Jugar"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "📱 De la App • ✝️ Historia de Jesús hasta la Cruz • 😎 Retos Juveniles",
+                        fontSize = 11.sp,
+                        color = tierAccent.copy(alpha = 0.95f),
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 5-Step Daily / Rank Progress Bar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (dailyQuestionsCompletedToday < FaithRankTier.MAX_DAILY_QUESTIONS && completedChallengesCount < FaithRankTier.TOTAL_CHALLENGES) {
+                                "🔒 Al entrar no podrás regresar al inicio hasta responder tus 5 preguntas (sin copia)"
+                            } else if (nextRank != null) {
+                                "✅ 5/5 preguntas de hoy listas • Próximo rango: ${nextRank.badgeIconText} ${nextRank.rankName}"
+                            } else {
+                                "¡Rango Máximo Leyenda Kairós y todos los emblemas conquistados!"
+                            },
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "$dailyQuestionsCompletedToday/5 hoy",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = tierAccent
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        for (step in 1..FaithRankTier.CHALLENGES_PER_RANK) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        if (step <= dailyQuestionsCompletedToday || completedChallengesCount >= FaithRankTier.TOTAL_CHALLENGES) tierAccent
+                                        else Color.White.copy(alpha = 0.2f)
+                                    )
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -701,6 +872,283 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        // Creador de la App, Fecha de Creación, Propósito, Pilares y Dedicatoria (Parte inferior de Hoy)
+        item {
+            AboutCreatorAndPurposeCard()
+        }
+
+        // Recuadro de búsqueda "¿Quieres mandarle un mensaje al creador?" con botón "Enviar" al costado
+        item {
+            val activeUserName = userProfile?.fullName ?: "Usuario de Kairós"
+            val currentUserMessages = creatorMessages.filter {
+                it.senderName.equals(activeUserName, ignoreCase = true)
+            }
+            SendMessageToCreatorSection(
+                currentUserName = activeUserName,
+                isCreatorUser = userProfile?.isCreatorAccount == true,
+                userMessages = currentUserMessages,
+                onSendMessage = { viewModel.sendCreatorMessage(it) },
+                onOpenCreatorInbox = { viewModel.openCreatorInboxDialog() },
+                onOpenUserMessages = { viewModel.openUserMessagesDialog() },
+                onMarkRepliesSeen = { viewModel.markCreatorRepliesAsSeenForCurrentUser() }
+            )
+        }
+    }
+}
+
+@Composable
+fun AboutCreatorAndPurposeCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .testTag("home_creator_about_card"),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Encabezado con logo e insignia oficial
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.img_app_icon),
+                        contentDescription = "Logo Kairós",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = "CRÉDITOS, ORIGEN Y MISIÓN",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Sobre la App Kairós",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Tarjeta destacada del Creador y Fecha de Creación
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "CREADOR Y FUNDADOR",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.8.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = "Creada en 2026",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Kevin Abraham Rodríguez",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.testTag("creator_name_text")
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = "Desarrollador, autor de la iniciativa juvenil católica Kairós • Lanzamiento oficial: Septiembre de 2026",
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // ¿Con qué fin se creó? (Propósito)
+            Text(
+                text = "¿CON QUÉ FIN SE CREÓ KAIRÓS?",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 0.8.sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Kairós fue creada con el propósito de acercar a los jóvenes y a cada creyente a un encuentro vivo, auténtico y cotidiano con Jesús y con la riqueza de la fe católica. Nació para demostrar que la fe no es una teoría lejana ni aburrida, sino la mayor aventura de nuestra vida.",
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Su misión es brindar un espacio digital seguro, formativo y dinámico donde cada persona pueda comprender el poder transformador de los Sacramentos (Bautismo, Confirmación y Eucaristía), leer y buscar en los 73 libros de la Biblia Católica, fortalecer su aprendizaje con 5 preguntas diarias sin copia sobre la historia de Jesús hasta la Cruz, y encontrar paz interior en medio del estrés diario.",
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // ¿Qué significa Kairós? + Los 4 Pilares
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "SIGNIFICADO Y PILARES DE LA APP",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "• ¿Qué significa «Kairós»?: Proviene del griego (Καιρός) y significa «el tiempo perfecto de Dios», ese instante de gracia donde Dios toca tu corazón.\n" +
+                            "• Palabra y Verdad: Exploración completa de los 73 libros del canon bíblico católico explicados para jóvenes.\n" +
+                            "• Aprendizaje Diario: Sistema de 5 retos por día, 12 rangos y emblemas para aprender de forma divertida y honesta.\n" +
+                            "• Vida Interior: Diario espiritual, dilemas de fe actuales y pausas conscientes de oración.",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Dedicatoria del Creador
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "MENSAJE DEL CREADOR",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.secondary,
+                            letterSpacing = 0.8.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "«Esta aplicación fue pensada y construida con dedicación para que ningún joven camine solo en su fe. Que cada versículo, cada sacramento y cada reto diario te recuerden que Dios te conoce por tu nombre y tiene un propósito eterno para ti.»",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "— Kevin Abraham Rodríguez",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Pie de tarjeta
+            Text(
+                text = "Kairós v1.0 • Creado por Kevin Abraham Rodríguez (2026) • Ad Maiorem Dei Gloriam ✝️",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

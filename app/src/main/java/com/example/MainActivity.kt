@@ -2,29 +2,36 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Shield
@@ -46,17 +53,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.AppLaunchStage
+import com.example.ui.components.CreatorInboxDialog
 import com.example.ui.components.DailyQuoteDialog
+import com.example.ui.components.ProfileAvatar
+import com.example.ui.components.RegisteredUsersDialog
+import com.example.ui.components.UserMessagesInboxDialog
 import com.example.ui.screens.BibleScreen
+import com.example.ui.screens.ChallengesRankScreen
 import com.example.ui.screens.DilemmasScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.IntroCinematicScreen
 import com.example.ui.screens.JournalScreen
+import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.PrayerScreen
 import com.example.ui.screens.SacramentsScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -70,7 +84,8 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     setContent {
-      MyApplicationTheme {
+      val isDarkMode by viewModel.isDarkMode.collectAsState()
+      MyApplicationTheme(darkTheme = isDarkMode) {
         KairosApp(viewModel = viewModel)
       }
     }
@@ -80,174 +95,434 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KairosApp(viewModel: MainViewModel) {
+  val appLaunchStage by viewModel.appLaunchStage.collectAsState()
+  val loginFullName by viewModel.loginFullName.collectAsState()
+  val loginGender by viewModel.loginGender.collectAsState()
+  val loginAgeCategory by viewModel.loginAgeCategory.collectAsState()
+  val loginPhotoUri by viewModel.loginPhotoUri.collectAsState()
+  val userProfile by viewModel.userProfile.collectAsState()
+  val registeredUsersCount by viewModel.registeredUsersCount.collectAsState()
+  val registeredUsersList by viewModel.registeredUsersList.collectAsState()
+  val showRegisteredUsersDialog by viewModel.showRegisteredUsersDialog.collectAsState()
+  val loginDuplicateUserNotification by viewModel.loginDuplicateUserNotification.collectAsState()
+  val creatorMessages by viewModel.creatorMessages.collectAsState()
+  val showCreatorInboxDialog by viewModel.showCreatorInboxDialog.collectAsState()
+  val isCreatorInboxUnlocked by viewModel.isCreatorInboxUnlocked.collectAsState()
+  val showUserMessagesDialog by viewModel.showUserMessagesDialog.collectAsState()
+  val isDarkMode by viewModel.isDarkMode.collectAsState()
+  val currentFaithRank by viewModel.currentFaithRank.collectAsState()
+  val isChallengeAntiCopyLocked by viewModel.isChallengeAntiCopyLocked.collectAsState()
+  val dailyQuestionsCompletedToday by viewModel.dailyQuestionsCompletedToday.collectAsState()
+
   val currentScreen by viewModel.currentScreen.collectAsState()
   val showDailyQuoteDialog by viewModel.showDailyQuoteDialog.collectAsState()
   val dailyQuote by viewModel.dailyQuote.collectAsState()
   val dailyQuoteSaved by viewModel.dailyQuoteSaved.collectAsState()
 
-  if (showDailyQuoteDialog) {
-    DailyQuoteDialog(
-      quote = dailyQuote,
-      isSavedToJournal = dailyQuoteSaved,
-      onDismiss = { viewModel.dismissDailyQuoteDialog() },
-      onNextQuote = { viewModel.nextDailyQuote() },
-      onSaveToJournal = { viewModel.saveDailyQuoteToJournal(it) }
-    )
-  }
-
-  Scaffold(
+  Crossfade(
+    targetState = appLaunchStage,
     modifier = Modifier.fillMaxSize(),
-    contentWindowInsets = WindowInsets.safeDrawing,
-    topBar = {
-      TopAppBar(
-        navigationIcon = {
-          if (currentScreen is Screen.Bible) {
-            IconButton(
-              onClick = { viewModel.navigateTo(Screen.Home) },
-              modifier = Modifier.testTag("btn_back_from_bible")
-            ) {
-              Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Volver al inicio"
-              )
-            }
-          }
-        },
-        title = {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-              shape = CircleShape,
-              color = MaterialTheme.colorScheme.primaryContainer,
-              modifier = Modifier.size(34.dp)
-            ) {
-              Image(
-                painter = painterResource(id = R.drawable.img_app_icon),
-                contentDescription = "Logo Kairós",
-                modifier = Modifier
-                  .fillMaxSize()
-                  .clip(CircleShape)
-              )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-              text = if (currentScreen is Screen.Bible) "Biblia Católica" else "Kairós",
-              fontSize = 20.sp,
-              fontWeight = FontWeight.ExtraBold,
-              color = MaterialTheme.colorScheme.onSurface
-            )
-          }
-        },
-        actions = {
-          IconButton(
-            onClick = { viewModel.showDailyQuoteDialog() },
-            modifier = Modifier.testTag("btn_top_bar_daily_quote")
-          ) {
-            Icon(
-              imageVector = Icons.Default.FormatQuote,
-              contentDescription = "Cita del Día",
-              tint = MaterialTheme.colorScheme.primary
-            )
-          }
-          IconButton(
-            onClick = { viewModel.navigateTo(Screen.Bible) },
-            modifier = Modifier.testTag("btn_top_bar_search_bible")
-          ) {
-            Icon(
-              imageVector = Icons.Default.Search,
-              contentDescription = "Buscar en la Biblia Católica",
-              tint = if (currentScreen is Screen.Bible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-          }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.surface
-        ),
-        modifier = Modifier.testTag("app_top_bar")
-      )
-    },
-    bottomBar = {
-      NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.testTag("main_navigation_bar")
-      ) {
-        NavigationBarItem(
-          selected = currentScreen is Screen.Home,
-          onClick = { viewModel.navigateTo(Screen.Home) },
-          icon = { Icon(Icons.Default.Home, contentDescription = "Hoy") },
-          label = { Text("Hoy", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-          colors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedIconColor = MaterialTheme.colorScheme.primary
-          ),
-          modifier = Modifier.testTag("nav_item_home")
-        )
-
-        NavigationBarItem(
-          selected = currentScreen is Screen.Sacraments,
-          onClick = { viewModel.navigateTo(Screen.Sacraments) },
-          icon = { Icon(Icons.Default.Shield, contentDescription = "Sacramentos") },
-          label = { Text("Sacramentos", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-          colors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedIconColor = MaterialTheme.colorScheme.primary
-          ),
-          modifier = Modifier.testTag("nav_item_sacraments")
-        )
-
-        NavigationBarItem(
-          selected = currentScreen is Screen.Dilemmas,
-          onClick = { viewModel.navigateTo(Screen.Dilemmas) },
-          icon = { Icon(Icons.Default.Lightbulb, contentDescription = "Dilemas") },
-          label = { Text("Dilemas", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-          colors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedIconColor = MaterialTheme.colorScheme.primary
-          ),
-          modifier = Modifier.testTag("nav_item_dilemmas")
-        )
-
-        NavigationBarItem(
-          selected = currentScreen is Screen.Journal,
-          onClick = { viewModel.navigateTo(Screen.Journal) },
-          icon = { Icon(Icons.Default.MenuBook, contentDescription = "Mi Diario") },
-          label = { Text("Diario", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-          colors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedIconColor = MaterialTheme.colorScheme.primary
-          ),
-          modifier = Modifier.testTag("nav_item_journal")
-        )
-
-        NavigationBarItem(
-          selected = currentScreen is Screen.Prayers,
-          onClick = { viewModel.navigateTo(Screen.Prayers) },
-          icon = { Icon(Icons.Default.SelfImprovement, contentDescription = "Pausa") },
-          label = { Text("Pausa", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-          colors = NavigationBarItemDefaults.colors(
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedIconColor = MaterialTheme.colorScheme.primary
-          ),
-          modifier = Modifier.testTag("nav_item_prayers")
+    label = "launch_stage_crossfade"
+  ) { stage ->
+    when (stage) {
+      AppLaunchStage.CINEMATIC -> {
+        IntroCinematicScreen(
+          onCinematicFinished = { viewModel.completeCinematic() }
         )
       }
-    }
-  ) { innerPadding ->
-    Crossfade(
-      targetState = currentScreen,
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(innerPadding),
-      label = "screen_crossfade"
-    ) { screen ->
-      when (screen) {
-        is Screen.Home -> HomeScreen(viewModel = viewModel)
-        is Screen.Sacraments -> SacramentsScreen(viewModel = viewModel)
-        is Screen.Dilemmas -> DilemmasScreen(viewModel = viewModel)
-        is Screen.Bible -> BibleScreen(viewModel = viewModel)
-        is Screen.Journal -> JournalScreen(viewModel = viewModel)
-        is Screen.Prayers -> PrayerScreen(viewModel = viewModel)
+
+      AppLaunchStage.LOGIN -> {
+        LoginScreen(
+          fullName = loginFullName,
+          selectedGender = loginGender,
+          selectedAgeCategory = loginAgeCategory,
+          isDarkMode = isDarkMode,
+          onFullNameChange = { viewModel.updateLoginFullName(it) },
+          onSelectGender = { viewModel.selectLoginGender(it) },
+          onSelectAgeCategory = { viewModel.selectLoginAgeCategory(it) },
+          onSubmitLogin = { viewModel.submitLogin() },
+          onReplayCinematic = { viewModel.replayCinematic() },
+          onToggleDarkMode = { viewModel.toggleDarkMode() },
+          registeredUsersCount = registeredUsersCount,
+          canCancelToApp = userProfile != null,
+          onCancelToApp = { viewModel.cancelRegistrationAndReturnToApp() },
+          photoUri = loginPhotoUri,
+          onPhotoUriChange = { viewModel.updateLoginPhotoUri(it) },
+          duplicateUserNotification = loginDuplicateUserNotification,
+          onDismissDuplicateNotification = { viewModel.dismissLoginDuplicateNotification() },
+          onSubmitCreatorLoginWithPassword = { viewModel.submitLogin(creatorAuthPassword = it) }
+        )
+      }
+
+      AppLaunchStage.MAIN_APP -> {
+        BackHandler(enabled = currentScreen !is Screen.Home) {
+          if (currentScreen is Screen.Challenges && isChallengeAntiCopyLocked) {
+            viewModel.triggerAntiCopyWarning()
+          } else {
+            viewModel.navigateTo(Screen.Home)
+          }
+        }
+
+        if (showDailyQuoteDialog) {
+          DailyQuoteDialog(
+            quote = dailyQuote,
+            isSavedToJournal = dailyQuoteSaved,
+            isDarkMode = isDarkMode,
+            onToggleDarkMode = { viewModel.toggleDarkMode() },
+            onDismiss = { viewModel.dismissDailyQuoteDialog() },
+            onNextQuote = { viewModel.nextDailyQuote() },
+            onSaveToJournal = { viewModel.saveDailyQuoteToJournal(it) }
+          )
+        }
+
+        if (showRegisteredUsersDialog) {
+          RegisteredUsersDialog(
+            registeredCount = registeredUsersCount,
+            registeredUsers = registeredUsersList,
+            activeProfile = userProfile,
+            onDismiss = { viewModel.dismissRegisteredUsersDialog() },
+            onRegisterNewPerson = { viewModel.startNewPersonRegistration() },
+            onEditCurrentProfile = { viewModel.openLoginProfile() },
+            onSelectAccount = { viewModel.switchActiveAccount(it) },
+            onDeleteAccount = { viewModel.deleteRegisteredAccount(it) },
+            onUpdateActiveProfilePhoto = { viewModel.updateCurrentUserProfilePhoto(it) },
+            onOpenCreatorInbox = { viewModel.openCreatorInboxDialog() }
+          )
+        }
+
+        if (showCreatorInboxDialog) {
+          CreatorInboxDialog(
+            messages = creatorMessages,
+            isUnlocked = isCreatorInboxUnlocked,
+            onUnlockWithPassword = { viewModel.unlockCreatorInbox(it) },
+            onReplyToMessage = { id, reply -> viewModel.replyToCreatorMessage(id, reply) },
+            onDeleteMessage = { viewModel.deleteCreatorMessage(it) },
+            onDismiss = { viewModel.dismissCreatorInboxDialog() }
+          )
+        }
+
+        if (showUserMessagesDialog) {
+          val activeName = userProfile?.fullName ?: "Usuario de Kairós"
+          val currentUserMessages = creatorMessages.filter {
+            it.senderName.equals(activeName, ignoreCase = true)
+          }
+          UserMessagesInboxDialog(
+            userName = activeName,
+            userMessages = currentUserMessages,
+            onDismiss = { viewModel.dismissUserMessagesDialog() }
+          )
+        }
+
+        Scaffold(
+          modifier = Modifier.fillMaxSize(),
+          contentWindowInsets = WindowInsets.safeDrawing,
+          topBar = {
+            TopAppBar(
+              navigationIcon = {
+                if (currentScreen is Screen.Bible) {
+                  IconButton(
+                    onClick = { viewModel.navigateTo(Screen.Home) },
+                    modifier = Modifier.testTag("btn_back_from_bible")
+                  ) {
+                    Icon(
+                      imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                      contentDescription = "Volver al inicio"
+                    )
+                  }
+                }
+              },
+              title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(32.dp)
+                  ) {
+                    Image(
+                      painter = painterResource(id = R.drawable.img_app_icon),
+                      contentDescription = "Logo Kairós",
+                      modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                    )
+                  }
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Text(
+                        text = if (currentScreen is Screen.Bible) "Biblia" else "Kairós",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                      )
+                      Spacer(modifier = Modifier.width(6.dp))
+                      // Contador pequeño pero visible del total de personas registradas
+                      Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier
+                          .clip(RoundedCornerShape(50))
+                          .clickable { viewModel.openRegisteredUsersDialog() }
+                          .testTag("top_registered_users_badge")
+                      ) {
+                        Row(
+                          modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                          verticalAlignment = Alignment.CenterVertically
+                        ) {
+                          Icon(
+                            imageVector = Icons.Default.Groups,
+                            contentDescription = "Total de personas registradas",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(12.dp)
+                          )
+                          Spacer(modifier = Modifier.width(4.dp))
+                          Text(
+                            text = "Registrados: $registeredUsersCount",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                          )
+                        }
+                      }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      userProfile?.let { profile ->
+                        Text(
+                          text = "${profile.firstName} • ${currentFaithRank.badgeIconText} ${currentFaithRank.rankName}",
+                          fontSize = 10.sp,
+                          fontWeight = FontWeight.SemiBold,
+                          color = MaterialTheme.colorScheme.primary
+                        )
+                      } ?: Text(
+                        text = "Rango: ${currentFaithRank.badgeIconText} ${currentFaithRank.rankName}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                      )
+                    }
+                  }
+                }
+              },
+              actions = {
+                IconButton(
+                  onClick = { viewModel.toggleDarkMode() },
+                  modifier = Modifier.testTag("btn_toggle_dark_mode")
+                ) {
+                  Icon(
+                    imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.Bedtime,
+                    contentDescription = if (isDarkMode) "Activar tema claro" else "Activar modo nocturno",
+                    tint = if (isDarkMode) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                  )
+                }
+                if (currentScreen is Screen.Challenges && isChallengeAntiCopyLocked) {
+                  Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier
+                      .padding(end = 8.dp)
+                      .clip(RoundedCornerShape(50))
+                      .clickable { viewModel.triggerAntiCopyWarning() }
+                      .testTag("top_bar_anti_copy_badge")
+                  ) {
+                    Row(
+                      modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Modo anti-copia activo",
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(14.dp)
+                      )
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text(
+                        text = "Sin Copia ($dailyQuestionsCompletedToday/5)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                      )
+                    }
+                  }
+                } else {
+                  IconButton(
+                    onClick = { viewModel.showDailyQuoteDialog() },
+                    modifier = Modifier.testTag("btn_top_bar_daily_quote")
+                  ) {
+                    Icon(
+                      imageVector = Icons.Default.FormatQuote,
+                      contentDescription = "Cita del Día",
+                      tint = MaterialTheme.colorScheme.primary
+                    )
+                  }
+                  IconButton(
+                    onClick = { viewModel.navigateTo(Screen.Bible) },
+                    modifier = Modifier.testTag("btn_top_bar_search_bible")
+                  ) {
+                    Icon(
+                      imageVector = Icons.Default.Search,
+                      contentDescription = "Buscar en la Biblia Católica",
+                      tint = if (currentScreen is Screen.Bible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                  }
+                  IconButton(
+                    onClick = { viewModel.openRegisteredUsersDialog() },
+                    modifier = Modifier.testTag("btn_user_profile")
+                  ) {
+                    if (userProfile?.hasPhoto == true) {
+                      ProfileAvatar(
+                        photoUri = userProfile?.photoUri,
+                        displayName = userProfile?.fullName.orEmpty(),
+                        size = 28.dp,
+                        fontSize = 12.sp,
+                        borderWidth = 1.5.dp
+                      )
+                    } else {
+                      Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Ver personas registradas y perfil",
+                        tint = MaterialTheme.colorScheme.onSurface
+                      )
+                    }
+                  }
+                }
+              },
+              colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface
+              ),
+              modifier = Modifier.testTag("app_top_bar")
+            )
+          },
+          bottomBar = {
+            NavigationBar(
+              containerColor = MaterialTheme.colorScheme.surface,
+              modifier = Modifier.testTag("main_navigation_bar")
+            ) {
+              NavigationBarItem(
+                selected = currentScreen is Screen.Home,
+                onClick = { viewModel.navigateTo(Screen.Home) },
+                icon = {
+                  Icon(
+                    imageVector = if (isChallengeAntiCopyLocked) Icons.Default.Lock else Icons.Default.Home,
+                    contentDescription = if (isChallengeAntiCopyLocked) "Inicio bloqueado durante las 5 preguntas" else "Hoy"
+                  )
+                },
+                label = {
+                  Text(
+                    text = if (isChallengeAntiCopyLocked) "🔒 Hoy" else "Hoy",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
+                  )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.testTag("nav_item_home")
+              )
+
+              NavigationBarItem(
+                selected = currentScreen is Screen.Challenges,
+                onClick = { viewModel.navigateTo(Screen.Challenges) },
+                icon = { Icon(Icons.Default.EmojiEvents, contentDescription = "Retos y Rangos") },
+                label = { Text("5 Preg.", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.secondary
+                ),
+                modifier = Modifier.testTag("nav_item_challenges")
+              )
+
+              NavigationBarItem(
+                selected = currentScreen is Screen.Sacraments,
+                onClick = { viewModel.navigateTo(Screen.Sacraments) },
+                icon = {
+                  Icon(
+                    imageVector = if (isChallengeAntiCopyLocked) Icons.Default.Lock else Icons.Default.Shield,
+                    contentDescription = "Sacramentos"
+                  )
+                },
+                label = { Text("Sacram.", fontSize = 10.sp, fontWeight = FontWeight.Medium) },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.testTag("nav_item_sacraments")
+              )
+
+              NavigationBarItem(
+                selected = currentScreen is Screen.Dilemmas,
+                onClick = { viewModel.navigateTo(Screen.Dilemmas) },
+                icon = {
+                  Icon(
+                    imageVector = if (isChallengeAntiCopyLocked) Icons.Default.Lock else Icons.Default.Lightbulb,
+                    contentDescription = "Dilemas"
+                  )
+                },
+                label = { Text("Dilemas", fontSize = 10.sp, fontWeight = FontWeight.Medium) },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.testTag("nav_item_dilemmas")
+              )
+
+              NavigationBarItem(
+                selected = currentScreen is Screen.Journal,
+                onClick = { viewModel.navigateTo(Screen.Journal) },
+                icon = {
+                  Icon(
+                    imageVector = if (isChallengeAntiCopyLocked) Icons.Default.Lock else Icons.Default.MenuBook,
+                    contentDescription = "Mi Diario"
+                  )
+                },
+                label = { Text("Diario", fontSize = 10.sp, fontWeight = FontWeight.Medium) },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.testTag("nav_item_journal")
+              )
+
+              NavigationBarItem(
+                selected = currentScreen is Screen.Prayers,
+                onClick = { viewModel.navigateTo(Screen.Prayers) },
+                icon = {
+                  Icon(
+                    imageVector = if (isChallengeAntiCopyLocked) Icons.Default.Lock else Icons.Default.SelfImprovement,
+                    contentDescription = "Pausa"
+                  )
+                },
+                label = { Text("Pausa", fontSize = 10.sp, fontWeight = FontWeight.Medium) },
+                colors = NavigationBarItemDefaults.colors(
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                  selectedIconColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.testTag("nav_item_prayers")
+              )
+            }
+          }
+        ) { innerPadding ->
+          Crossfade(
+            targetState = currentScreen,
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(innerPadding),
+            label = "screen_crossfade"
+          ) { screen ->
+            when (screen) {
+              is Screen.Home -> HomeScreen(viewModel = viewModel)
+              is Screen.Challenges -> ChallengesRankScreen(viewModel = viewModel)
+              is Screen.Sacraments -> SacramentsScreen(viewModel = viewModel)
+              is Screen.Dilemmas -> DilemmasScreen(viewModel = viewModel)
+              is Screen.Bible -> BibleScreen(viewModel = viewModel)
+              is Screen.Journal -> JournalScreen(viewModel = viewModel)
+              is Screen.Prayers -> PrayerScreen(viewModel = viewModel)
+            }
+          }
+        }
       }
     }
   }
 }
+
 

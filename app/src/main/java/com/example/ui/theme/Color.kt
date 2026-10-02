@@ -38,6 +38,8 @@ val GoldDarkOnSecondaryContainer = Color(0xFFFEF3C7)
 
 val CoralDarkTertiary = Color(0xFFFB923C)
 val CoralDarkOnTertiary = Color(0xFF431407)
+val CoralDarkTertiaryContainer = Color(0xFF7C2D12)
+val CoralDarkOnTertiaryContainer = Color(0xFFFFEDD5)
 
 val DarkBackground = Color(0xFF0B132B)
 val DarkOnBackground = Color(0xFFF1F5F9)
@@ -45,4 +47,5 @@ val DarkSurface = Color(0xFF1C2541)
 val DarkOnSurface = Color(0xFFF8FAFC)
 val DarkSurfaceVariant = Color(0xFF263353)
 val DarkOnSurfaceVariant = Color(0xFFCBD5E1)
+
 
